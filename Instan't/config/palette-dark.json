@@ -1,0 +1,40 @@
+{
+  "themeName": "Dark Obsidian & Mint Glass",
+  "author": "nikko.dev",
+  "mode": "dark-custom-palette",
+  "usage": "Seeded automatically by the build (themePresetId=0 + themePaletteJson).",
+  "hexReference": {
+    "background": "#080A0F",
+    "surface": "#111827 @ alpha F2",
+    "primaryText": "#F8FAFC",
+    "secondaryText": "#94A3B8",
+    "accent": "#00F5A0",
+    "button": "#00F5A0",
+    "icon": "#00F5A0",
+    "glyph": "#2DD4BF",
+    "divider": "#1F2937 @ alpha CC",
+    "border": "#1E293B @ alpha CC",
+    "statusBar": "#080A0F",
+    "navigation": "#080A0F",
+    "link": "#58D8FF",
+    "error": "#EF4444",
+    "destructive": "#F43F5E"
+  },
+  "palette": {
+    "background": -16250353,
+    "surface": -233760729,
+    "primaryText": -460036,
+    "secondaryText": -7035976,
+    "accent": -16714336,
+    "button": -16714336,
+    "icon": -16714336,
+    "glyph": -13773633,
+    "divider": -870373065,
+    "border": -870438597,
+    "statusBar": -16250353,
+    "navigation": -16250353,
+    "link": -10954497,
+    "error": -1096636,
+    "destructive": -770210
+  }
+}

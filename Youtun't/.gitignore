@@ -1,0 +1,10 @@
+# Youtun't gitignore
+bin/*.jar
+bin/*.apk
+bin/*.rvp
+input/*.apk
+dist/*.apk
+youtunt.keystore
+*.log
+.DS_Store
+.cache/

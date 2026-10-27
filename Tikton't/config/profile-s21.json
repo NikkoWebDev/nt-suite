@@ -1,0 +1,10 @@
+{
+  "profile": "s21",
+  "label": "Galaxy S21 FE Tuned",
+  "output": "Tiktont-S21.apk",
+  "app_name": "Tikton´t S21",
+  "target_package": "com.zhiliaoapp.musically",
+  "refresh_rate": 120,
+  "hardware_acceleration": true,
+  "notes": "Tuned for Samsung Galaxy S21 FE 120Hz Dynamic AMOLED display and hardware video decoding."
+}

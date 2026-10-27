@@ -1,0 +1,434 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Tikton't • Custom TikTok Build Engine (official ReVanced bundle)
+# Dark Obsidian & Mint Glass Edition • S21 FE Tuned & Universal
+# ==============================================================================
+
+set -euo pipefail
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BIN_DIR="$DIR/bin"
+CONFIG_DIR="$DIR/config"
+ASSETS_DIR="$DIR/assets"
+INPUT_DIR="$DIR/input"
+DIST_DIR="$DIR/dist"
+SCRIPTS_DIR="$DIR/scripts"
+CACHE_DIR="$DIR/.cache"
+
+BASE_CONFIG="$CONFIG_DIR/tiktont-profile.json"
+KEYSTORE="$DIR/tiktont.keystore"
+KEY_PASS="tiktont123"
+KEY_ALIAS="tiktont"
+
+# Terminal colors (Mint, Cyan, Obsidian)
+MINT='\033[38;2;0;245;160m'
+CYAN='\033[38;2;45;212;191m'
+TEAL='\033[38;2;32;178;170m'
+OBSIDIAN='\033[38;2;120;144;156m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+pause() {
+    if [ -t 0 ]; then
+        read -r -p "${1:-Presiona ENTER para continuar...}" _ || true
+    fi
+}
+
+banner() {
+    clear 2>/dev/null || true
+    echo -e "${MINT}${BOLD}"
+    echo "  ████████╗ ██╗ ██╗  ██╗ ████████╗  ██████╗  ███╗   ██╗ ████████╗"
+    echo "  ╚══██╔══╝ ██║ ██║ ██╔╝ ╚══██╔══╝ ██╔═══██╗ ████╗  ██║ ╚══██╔══╝"
+    echo "     ██║    ██║ █████╔╝     ██║    ██║   ██║ ██╔██╗ ██║    ██║   "
+    echo "     ██║    ██║ ██╔═██╗     ██║    ██║   ██║ ██║╚██╗██║    ██║   "
+    echo "     ██║    ██║ ██║  ██╗    ██║    ╚██████╔╝ ██║ ╚████║    ██║   "
+    echo "     ╚═╝    ╚═╝ ╚═╝  ╚═╝    ╚═╝     ╚═════╝  ╚═╝  ╚═══╝    ╚═╝   "
+    echo -e "       ${CYAN}• Official ReVanced bundle • Dark Obsidian & Mint Glass •${NC}"
+    echo -e "             ${TEAL}Distraction-Free Feed • Samsung S21 FE Tuned${NC}"
+    echo ""
+}
+
+config_path() {
+    python3 - "$BASE_CONFIG" "$1" <<'PYEOF'
+import json, sys
+doc = json.load(open(sys.argv[1], encoding="utf-8"))
+value = doc
+for part in sys.argv[2].split("."):
+    value = value[part]
+print(value)
+PYEOF
+}
+
+ensure_dirs() {
+    mkdir -p "$INPUT_DIR" "$DIST_DIR" "$ASSETS_DIR" "$BIN_DIR" "$CACHE_DIR" "$CONFIG_DIR" "$SCRIPTS_DIR"
+}
+
+check_dependencies() {
+    local missing=0
+    command -v java &>/dev/null || { echo -e "${RED}[ERROR] OpenJDK (java) no encontrado.${NC}"; missing=1; }
+    local cli_jar="$DIR/$(config_path bundle.cli)"
+    local patches_rvp="$DIR/$(config_path bundle.patches)"
+    [ -f "$cli_jar" ] || { echo -e "${RED}[ERROR] Falta bin/revanced-cli.jar ($cli_jar).${NC}"; missing=1; }
+    [ -f "$patches_rvp" ] || { echo -e "${RED}[ERROR] Falta el bundle de parches oficial ($patches_rvp).${NC}"; missing=1; }
+    [ $missing -eq 0 ] || exit 1
+}
+
+ensure_keystore() {
+    local ktool_class="$CACHE_DIR/KsTool.class"
+    local cli_jar="$DIR/$(config_path bundle.cli)"
+    if [ ! -f "$ktool_class" ]; then
+        javac -cp "$cli_jar" -d "$CACHE_DIR" "$SCRIPTS_DIR/KsTool.java"
+    fi
+    if [ ! -f "$KEYSTORE" ] || ! java -cp "$CACHE_DIR:$cli_jar" KsTool check "$KEYSTORE" "$KEY_PASS" "$KEY_ALIAS" >/dev/null 2>&1; then
+        [ -f "$KEYSTORE" ] && mv "$KEYSTORE" "$KEYSTORE.broken.bak"
+        echo -e "${CYAN}[*] Generando keystore BKS (CN=Tiktont) para Tikton't...${NC}"
+        java -cp "$CACHE_DIR:$cli_jar" KsTool create "$KEYSTORE" "$KEY_PASS" "$KEY_ALIAS" || {
+            echo -e "${RED}[ERROR] No se pudo generar la keystore BKS.${NC}"
+            exit 1
+        }
+        echo -e "${GREEN}[✓] Keystore creada exitosamente.${NC}"
+    fi
+    echo "$KEYSTORE"
+}
+
+find_input_apk() {
+    local recommended
+    recommended=$(basename "$(config_path bundle.recommended_base)" 2>/dev/null || true)
+    if [ -n "$recommended" ] && [ -f "$INPUT_DIR/$recommended" ]; then
+        echo "$INPUT_DIR/$recommended"
+        return
+    fi
+    local apk
+    apk=$(find "$INPUT_DIR" -maxdepth 1 \( -name "tiktok-*.apk" -o -name "musically-*.apk" -o -name "TikTok-*.apk" \) -and -not -name "*-temporary-*" 2>/dev/null | sort | tail -n 1)
+    if [ -n "$apk" ]; then
+        echo "$apk"
+        return
+    fi
+    echo ""
+}
+
+validate_against_bundle() {
+    local patch_file="$DIR/$(config_path bundle.patches)"
+    local cli_jar="$DIR/$(config_path bundle.cli)"
+    local list_file="$CACHE_DIR/patchlist.txt"
+    echo -e "${CYAN}[*] Validando parches contra $(basename "$patch_file")...${NC}"
+    java -jar "$cli_jar" list-patches -p "$patch_file" -b --packages --options > "$list_file.tmp" 2>/dev/null
+    mv "$list_file.tmp" "$list_file"
+
+    python3 - "$BASE_CONFIG" "$list_file" <<'PYEOF'
+import json, re, sys
+
+doc = json.load(open(sys.argv[1], encoding="utf-8"))
+list_file = sys.argv[2]
+text = open(list_file, encoding="utf-8", errors="replace").read()
+
+compatible_pkgs = set(doc["bundle"]["compatible_packages"])
+all_patches = {}
+
+for section in re.split(r"^(?:INFO: )?Index: \d+$", text, flags=re.M)[1:]:
+    m = re.search(r"^Name: (.*)$", section, flags=re.M)
+    if not m:
+        continue
+    patch_name = m.group(1).strip()
+    pkgs = re.findall(r"^\tPackage name: (.*)$", section, flags=re.M)
+    is_universal = ("Compatible packages:" not in section)
+    options = re.findall(r"^\tName: (.*)$", section, flags=re.M)
+
+    if is_universal or any(p in compatible_pkgs for p in pkgs):
+        all_patches.setdefault(patch_name, []).append({
+            "section": section,
+            "pkgs": pkgs,
+            "universal": is_universal,
+            "options": options
+        })
+
+errors = []
+verified_count = 0
+for patch_name in doc.get("patches_enabled", []):
+    if patch_name not in all_patches:
+        errors.append(f"patch '{patch_name}' not declared in bundle for {list(compatible_pkgs)}")
+    else:
+        verified_count += 1
+        entry = all_patches[patch_name][0]
+        scope = "universal" if entry["universal"] else f"compatible ({', '.join(entry['pkgs'])})"
+        print(f"  \033[0;32m[✓]\033[0m Verified: {patch_name:<36} \033[38;2;120;144;156m[{scope}]\033[0m")
+
+for entry in doc.get("patch_options", []):
+    sections = all_patches.get(entry["patch"], [])
+    if not sections:
+        errors.append(f"patch '{entry['patch']}' has no matching section for options")
+        continue
+    if not any(re.search(rf"^\tName: {re.escape(entry['option'])}$", s["section"], re.M) for s in sections):
+        errors.append(f"patch '{entry['patch']}' has no option '{entry['option']}'")
+
+for name in doc.get("patch_disable", []):
+    if name not in all_patches:
+        errors.append(f"disable target '{name}' is not in bundle")
+
+if errors:
+    print("\n\033[0;31m[ERROR] Inconsistencias con el bundle de parches:\033[0m")
+    for err in errors:
+        print(f"  - {err}")
+    sys.exit(1)
+
+print(f"\n\033[0;32m[✓] OK:\033[0m {verified_count} parches verificados contra el bundle vivo.")
+PYEOF
+}
+
+emit_patcher_args() {
+    python3 - "$BASE_CONFIG" "$1" "$DIR" <<'PYEOF'
+import json, os, sys
+
+base = json.load(open(sys.argv[1], encoding="utf-8"))
+profile = json.load(open(sys.argv[2], encoding="utf-8"))
+root = sys.argv[3]
+
+lines = []
+for patch in base.get("patches_enabled", []):
+    lines += ["-e", patch]
+
+for entry in base.get("patch_options", []):
+    patch = entry["patch"]
+    opt_name = entry["option"]
+    val = entry.get("value", "")
+    lines += ["-O", f"{opt_name}={val}"]
+
+for name in base.get("patch_disable", []):
+    lines += ["-d", name]
+
+print("\n".join(lines))
+PYEOF
+}
+
+verify_environment() {
+    banner
+    echo -e "${CYAN}${BOLD}═══ Verificación del Entorno Tikton't ═══${NC}\n"
+    ensure_dirs
+    check_dependencies
+    echo -e "${GREEN}[✓] Dependencias base:${NC} Java JDK OK, CLI OK, Patches bundle OK"
+
+    local keystore
+    keystore=$(ensure_keystore)
+    echo -e "${GREEN}[✓] Keystore BKS:${NC} $(basename "$keystore") verificado"
+
+    validate_against_bundle
+
+    echo -e "\n${BOLD}--- Estado de Archivos de Entrada ---${NC}"
+    local input_apk
+    input_apk=$(find_input_apk)
+    if [ -n "$input_apk" ]; then
+        echo -e "  ${GREEN}[✓] APK base disponible:${NC} $(basename "$input_apk") ($(du -h "$input_apk" | cut -f1))"
+    else
+        echo -e "  ${YELLOW}[!] Ningún APK base encontrado en $INPUT_DIR${NC}"
+        echo -e "      Coloca un APK de TikTok (ej. input/tiktok-base.apk) para compilar."
+    fi
+
+    echo -e "\n${BOLD}--- Dispositivos ADB ---${NC}"
+    adb devices -l 2>/dev/null || echo -e "  ${YELLOW}ADB no disponible o sin dispositivos conectados.${NC}"
+    echo ""
+    echo -e "${GREEN}${BOLD}[✓] Verificación completada con éxito.${NC}\n"
+}
+
+build_tiktont() {
+    local profile_name=${1:-s21}
+    local profile_file="$CONFIG_DIR/profile-$profile_name.json"
+    if [ ! -f "$profile_file" ]; then
+        echo -e "${RED}[ERROR] No existe config/profile-$profile_name.json (s21 | universal).${NC}"
+        exit 1
+    fi
+
+    ensure_dirs
+    check_dependencies
+    local keystore
+    keystore=$(ensure_keystore)
+
+    local app_name out_file out_apk
+    app_name=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1],encoding='utf-8'))['app_name'])" "$profile_file")
+    out_file=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1],encoding='utf-8'))['output'])" "$profile_file")
+    out_apk="$DIST_DIR/$out_file"
+
+    banner
+    echo -e "${MINT}${BOLD}═══ Compilando Tikton't [Perfil: ${profile_name^^}] ═══${NC}"
+    echo -e "${GREEN}[✓] Nombre de app:${NC} $app_name"
+
+    local input_apk
+    input_apk=$(find_input_apk)
+    if [ -z "$input_apk" ]; then
+        echo -e "${RED}[ERROR] No hay APK base de TikTok en $INPUT_DIR.${NC}"
+        echo -e "${YELLOW}Coloca el APK oficial de TikTok en $INPUT_DIR/tiktok-base.apk.${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}[✓] APK base:${NC} $(basename "$input_apk")"
+
+    validate_against_bundle
+
+    local args_file="$CACHE_DIR/patcher-args-$profile_name.txt"
+    emit_patcher_args "$profile_file" > "$args_file"
+    local -a patcher_args=()
+    mapfile -t patcher_args < "$args_file"
+
+    rm -rf "$DIST_DIR"/*-temporary-files "$DIR"/*-temporary-files 2>/dev/null || true
+
+    echo -e "\n${CYAN}[*] Parcheando TikTok con ReVanced CLI (--exclusive)...${NC}"
+    local cli_jar="$DIR/$(config_path bundle.cli)"
+    local patches_rvp="$DIR/$(config_path bundle.patches)"
+
+    java -jar "$cli_jar" patch \
+        -p "$patches_rvp" -b \
+        --exclusive \
+        "${patcher_args[@]}" \
+        --keystore="$keystore" \
+        --keystore-password="$KEY_PASS" \
+        --keystore-entry-alias="$KEY_ALIAS" \
+        --keystore-entry-password="$KEY_PASS" \
+        --purge \
+        -o "$out_apk" \
+        "$input_apk"
+
+    if [ ! -f "$out_apk" ]; then
+        echo -e "${RED}[ERROR] El parcheador no produjo $out_apk.${NC}"
+        exit 1
+    fi
+
+    echo ""
+    echo -e "${GREEN}${BOLD}[✓] ¡Tikton't compilado con éxito!${NC}"
+    echo -e "${MINT}APK:${NC} ${BOLD}$out_apk${NC} ($(du -h "$out_apk" | cut -f1))"
+    echo ""
+    echo -e "${CYAN}Instalación:${NC}"
+    echo -e "  ./tiktont install $profile_name"
+    echo -e "  — o manual: adb install -r \"$out_apk\""
+    echo ""
+    pause "Presiona ENTER para volver al menú..."
+}
+
+clean_workspace() {
+    echo -e "${CYAN}[*] Limpiando espacio de trabajo...${NC}"
+    rm -rf "$DIST_DIR"/* "$CACHE_DIR"/* "$DIR"/*-temporary-files 2>/dev/null || true
+    echo -e "${GREEN}[✓] Limpieza completada (dist/ y .cache/ limpios).${NC}"
+}
+
+install_to_device() {
+    ensure_dirs
+    local profile=${1:-}
+    local target_apk=""
+    if [ -n "$profile" ]; then
+        local profile_file="$CONFIG_DIR/profile-$profile.json"
+        if [ -f "$profile_file" ]; then
+            local out_file
+            out_file=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1],encoding='utf-8'))['output'])" "$profile_file")
+            if [ -f "$DIST_DIR/$out_file" ]; then
+                target_apk="$DIST_DIR/$out_file"
+            fi
+        fi
+    fi
+    if [ -z "$target_apk" ]; then
+        target_apk=$(find "$DIST_DIR" -maxdepth 1 -name "Tiktont-*.apk" 2>/dev/null | sort | tail -n 1)
+    fi
+
+    if [ -z "$target_apk" ] || [ ! -f "$target_apk" ]; then
+        echo -e "${RED}[ERROR] No hay APK compilado de Tikton't en $DIST_DIR. Compila primero: ./tiktont build s21|universal${NC}"
+        exit 1
+    fi
+
+    echo -e "\n${MINT}${BOLD}═══ Instalando Tikton't ═══${NC}"
+    echo -e "APK: ${BOLD}$(basename "$target_apk")${NC}"
+
+    if ! command -v adb &>/dev/null; then
+        echo -e "${YELLOW}adb no está en PATH. Comando manual:${NC}"
+        echo -e "  adb install -r \"$target_apk\""
+        exit 1
+    fi
+
+    local devices
+    devices=$(adb devices | grep -v "List" | grep "device$" | awk '{print $1}' || true)
+    if [ -z "$devices" ]; then
+        echo -e "${YELLOW}No se detectó ningún dispositivo con depuración USB conectada.${NC}"
+        echo -e "Comando manual cuando conectes el terminal:"
+        echo -e "  adb install -r \"$target_apk\""
+        exit 1
+    fi
+
+    echo -e "${CYAN}Dispositivo detectado: $devices${NC}"
+    echo -e "${CYAN}[*] Instalando $(basename "$target_apk")...${NC}"
+    adb install -r "$target_apk"
+    echo -e "\n${GREEN}${BOLD}[✓] ¡Tikton't instalado con éxito!${NC}"
+}
+
+show_status() {
+    banner
+    echo -e "${BOLD}--- Estado de Herramientas Tikton't ---${NC}"
+    java -version 2>&1 | head -n 1 | sed 's/^/  /'
+    for f in "$DIR/$(config_path bundle.cli)" "$DIR/$(config_path bundle.patches)" "$KEYSTORE"; do
+        if [ -f "$f" ]; then echo -e "  ${GREEN}✓${NC} $f"; else echo -e "  ${RED}✗${NC} $f"; fi
+    done
+    echo -e "\n${BOLD}--- Perfiles Configurados ---${NC}"
+    for p in s21 universal; do
+        if [ -f "$CONFIG_DIR/profile-$p.json" ]; then
+            echo -e "  ${GREEN}✓${NC} profile-$p.json"
+        else
+            echo -e "  ${RED}✗${NC} profile-$p.json"
+        fi
+    done
+    echo -e "\n${BOLD}--- Dispositivos ADB ---${NC}"
+    adb devices -l 2>/dev/null || true
+    echo ""
+}
+
+menu() {
+    while true; do
+        banner
+        echo -e "${BOLD}Opciones disponibles:${NC}"
+        echo -e "  ${MINT}1)${NC} Compilar Tikton't (${BOLD}Perfil S21 FE Tuned${NC})"
+        echo -e "  ${MINT}2)${NC} Compilar Tikton't (${BOLD}Perfil Universal${NC})"
+        echo -e "  ${MINT}3)${NC} Verificar entorno y parches ReVanced (${BOLD}verify${NC})"
+        echo -e "  ${MINT}4)${NC} Instalar Tikton't vía ADB"
+        echo -e "  ${MINT}5)${NC} Limpiar espacio de trabajo (${BOLD}clean${NC})"
+        echo -e "  ${MINT}6)${NC} Estado de herramientas y perfiles"
+        echo -e "  ${MINT}0)${NC} Salir"
+        echo ""
+        read -r -p "Selecciona una opción [0-6]: " opt || exit 0
+        case $opt in
+            1) build_tiktont "s21" ;;
+            2) build_tiktont "universal" ;;
+            3) verify_environment; pause ;;
+            4) install_to_device ;;
+            5) clean_workspace; pause ;;
+            6) show_status; pause ;;
+            0) echo -e "\n¡Hasta luego Niko! Que disfrutes de Tikton't.\n"; exit 0 ;;
+            *) sleep 1 ;;
+        esac
+    done
+}
+
+# Subcommand dispatcher
+case "${1:-}" in
+    build)
+        build_tiktont "${2:-s21}"
+        ;;
+    verify)
+        verify_environment
+        ;;
+    clean)
+        clean_workspace
+        ;;
+    install)
+        install_to_device "${2:-}"
+        ;;
+    status)
+        show_status
+        ;;
+    menu)
+        menu
+        ;;
+    *)
+        if [ -t 0 ] || [ "${INTERACTIVE:-0}" = "1" ]; then
+            menu
+        else
+            echo "Uso: ./tiktont verify | build s21|universal | clean | install [profile] | status | menu"
+            exit 2
+        fi
+        ;;
+esac

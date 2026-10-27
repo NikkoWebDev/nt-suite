@@ -1,0 +1,40 @@
+{
+  "bundle": {
+    "cli": "bin/revanced-cli.jar",
+    "patches": "bin/patches-official.rvp",
+    "target_package": "com.zhiliaoapp.musically",
+    "compatible_packages": [
+      "com.zhiliaoapp.musically",
+      "com.ss.android.ugc.trill"
+    ],
+    "base_globs": [
+      "tiktok-*",
+      "musically-*"
+    ],
+    "recommended_base": "input/tiktok-base.apk",
+    "note": "Official ReVanced bundle v6.1.0 with ReVanced CLI v6.0.0"
+  },
+  "theme": {
+    "dark_background": "#080A0F",
+    "mint_accent": "#00F5A0",
+    "cyan_accent": "#2DD4BF",
+    "note": "Dark Obsidian & Mint Glass palette"
+  },
+  "patches_enabled": [
+    "Feed filter",
+    "Remember clear display",
+    "Downloads",
+    "Show seekbar",
+    "Playback speed",
+    "Disable login requirement",
+    "Fix Google login",
+    "Settings",
+    "Sanitize sharing links",
+    "Disable Sentry telemetry",
+    "Remove screen capture restriction",
+    "Prevent screenshot detection",
+    "Remove screenshot restriction"
+  ],
+  "patch_options": [],
+  "patch_disable": []
+}

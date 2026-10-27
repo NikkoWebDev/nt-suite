@@ -1,0 +1,41 @@
+{
+  "bundle": {
+    "cli": "bin/revanced-cli.jar",
+    "patches": "bin/patches-official.rvp",
+    "gmscore": "bin/GmsCore.apk",
+    "target_package": "com.google.android.youtube",
+    "base_glob": "youtube-*",
+    "recommended_base": "input/youtube-20.14.43-nodpi.apk",
+    "note": "official ReVanced bundle v6.1.0, bundled with cli v6.0.0; YouTube patches are default-enabled, so the build only disables what must not run"
+  },
+  "theme": {
+    "dark_background": "#080A0F",
+    "light_background": "#F4FAF6",
+    "note": "Dark/Light theme background color options also bake the splash background (values + values-night)"
+  },
+  "branding": {
+    "icon_dir": "assets/branding",
+    "header_dir": "assets/header",
+    "icon_files": "mipmap-*/revanced_adaptive_{background,foreground}_custom.png",
+    "header_files": "drawable-*/revanced_header_custom_{light,dark}.png"
+  },
+  "runtime_mint": {
+    "seekbar_color": "0xFF00F5A0",
+    "seekbar_accent": "0xFF2DD4BF",
+    "player_overlay_opacity": 12,
+    "note": "runtime in-app settings (Seekbar/Theme patches expose them as settings; the bundle has no build-time option for these)"
+  },
+  "patch_options": [
+    { "patch": "Theme", "option": "Dark theme background color", "from": "theme.dark_background" },
+    { "patch": "Theme", "option": "Light theme background color", "from": "theme.light_background" },
+    { "patch": "Custom branding", "option": "App name", "from": "profile.app_name" },
+    { "patch": "Custom branding", "option": "Custom icon", "from": "branding.icon_dir" },
+    { "patch": "Change header", "option": "Custom header logo", "from": "branding.header_dir" },
+    { "patch": "Hide Shorts components", "option": "Hide Shorts app shortcut", "value": true },
+    { "patch": "Hide Shorts components", "option": "Hide Shorts widget", "value": true },
+    { "patch": "GmsCore support", "option": "gmsCoreVendorGroupId", "value": "app.revanced" }
+  ],
+  "patch_disable": [
+    "Announcements"
+  ]
+}

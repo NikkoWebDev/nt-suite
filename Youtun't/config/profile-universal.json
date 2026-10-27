@@ -1,0 +1,7 @@
+{
+  "profile": "universal",
+  "label": "Universal",
+  "output": "Youtunt-UNIVERSAL.apk",
+  "app_name": "Youtun´t",
+  "notes": "any arm64 device, standard launcher label"
+}

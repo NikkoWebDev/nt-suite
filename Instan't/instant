@@ -1,0 +1,308 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Instan't • Custom Instagram Build Engine & Distraction Eradicator
+# Dark Obsidian & Mint Glass Edition • No-Root LSPatch build
+# ==============================================================================
+
+set -euo pipefail
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BIN_DIR="$DIR/bin"
+CONFIG_DIR="$DIR/config"
+ASSETS_DIR="$DIR/assets"
+INPUT_DIR="$DIR/input"
+DIST_DIR="$DIR/dist"
+SCRIPTS_DIR="$DIR/scripts"
+
+LSPATCH_JAR="$BIN_DIR/lspatch.jar"
+MODULE_APK="$BIN_DIR/InstaEclipse-Legacy.apk"
+KEYSTORE="$BIN_DIR/instant.keystore"
+KEY_PASS="instant123"
+KEY_ALIAS="instant"
+
+# Colors (Mint neon, cyan & dark terminal aesthetic)
+MINT='\033[38;2;0;245;160m'
+CYAN='\033[38;2;88;216;255m'
+TEAL='\033[38;2;45;212;191m'
+OBSIDIAN='\033[38;2;148;163;184m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+# Interactive prompts only when a terminal is attached; CI-friendly otherwise.
+pause() {
+    if [ -t 0 ]; then
+        read -r -p "$1" _ || true
+    fi
+}
+
+banner() {
+    clear 2>/dev/null || true
+    echo -e "${MINT}${BOLD}"
+    echo "  ██╗███╗   ██╗███████╗████████╗ █████╗ ███╗   ██╗████████╗"
+    echo "  ██║████╗  ██║██╔════╝╚══██╔══╝██╔══██╗████╗  ██║╚══██╔══╝"
+    echo "  ██║██╔██╗ ██║███████╗   ██║   ███████║██╔██╗ ██║   ██║   "
+    echo "  ██║██║╚██╗██║╚════██║   ██║   ██╔══██║██║╚██╗██║   ██║   "
+    echo "  ██║██║ ╚████║███████║   ██║   ██║  ██║██║ ╚████║   ██║   "
+    echo "  ╚═╝╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝   "
+    echo -e "       ${CYAN}• Dark Obsidian & Mint Glass • Anti-Distraction Suite •${NC}"
+    echo -e "              ${TEAL}Tema auto-seed sin raíz • Samsung S21 FE Tuned${NC}"
+    echo ""
+}
+
+ensure_dirs() {
+    mkdir -p "$INPUT_DIR" "$DIST_DIR" "$ASSETS_DIR" "$BIN_DIR" "$CONFIG_DIR"
+}
+
+check_dependencies() {
+    local missing=0
+    if ! command -v java &>/dev/null; then
+        echo -e "${RED}[ERROR] OpenJDK (java) no encontrado.${NC}"
+        missing=1
+    fi
+    if [ ! -f "$LSPATCH_JAR" ]; then
+        echo -e "${RED}[ERROR] Falta bin/lspatch.jar.${NC}"
+        missing=1
+    fi
+    if [ ! -f "$MODULE_APK" ]; then
+        echo -e "${RED}[ERROR] Falta bin/InstaEclipse-Legacy.apk.${NC}"
+        missing=1
+    fi
+    if [ ! -f "$KEYSTORE" ]; then
+        echo -e "${YELLOW}[*] Generando keystore de firma para Instan't...${NC}"
+        keytool -genkey -v -keystore "$KEYSTORE" -alias "$KEY_ALIAS" -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass "$KEY_PASS" -keypass "$KEY_PASS" \
+            -dname "CN=Instant, OU=Dev, O=Nikko, L=City, ST=State, C=ES" &>/dev/null
+        echo -e "${GREEN}[✓] Keystore creada exitosamente.${NC}"
+    fi
+    if [ $missing -eq 1 ]; then
+        exit 1
+    fi
+}
+
+find_input_apk() {
+    local apk=""
+    apk=$(find "$INPUT_DIR" -maxdepth 1 -name "*instagram*.apk" 2>/dev/null | head -n 1)
+    if [ -z "$apk" ]; then
+        apk=$(find "$INPUT_DIR" -maxdepth 1 -name "*.apk" 2>/dev/null | head -n 1)
+    fi
+    echo "$apk"
+}
+
+build_seed_module() {
+    local profile="$1"
+    echo -e "${CYAN}[*] Construyendo módulo seeder de configuración (perfil ${profile})...${NC}"
+    "$SCRIPTS_DIR/build_seed_module.sh" "$profile"
+}
+
+build_instant() {
+    local profile_arg=${1:-s21}
+    case "$profile_arg" in
+        s21|universal) ;;
+        *)
+            echo -e "${RED}[ERROR] Perfil desconocido: ${profile_arg}. Usa s21 o universal.${NC}"
+            exit 1
+            ;;
+    esac
+    local profile="$profile_arg"
+
+    ensure_dirs
+    check_dependencies
+
+    echo -e "\n${MINT}${BOLD}═══ Compilando Instan't [Perfil: ${profile^^}] ═══${NC}"
+
+    local input_apk
+    input_apk=$(find_input_apk)
+    if [ -z "$input_apk" ]; then
+        echo -e "${RED}[!] No hay APK base de Instagram en:${NC} ${BOLD}$INPUT_DIR${NC}"
+        echo -e "${YELLOW}Descarga la variante ${BOLD}nodpi${NC}${YELLOW} de APKMirror y llámala input/instagram-base.apk.${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}[✓] APK base detectado:${NC} $(basename "$input_apk")"
+
+    if [ ! -d "$ASSETS_DIR/branding/mipmap-xxxhdpi" ]; then
+        echo -e "${CYAN}[*] Generando set de iconos Android Mint Glass...${NC}"
+        python3 "$SCRIPTS_DIR/generate_branding.py" "$ASSETS_DIR/branding"
+    fi
+
+    build_seed_module "$profile"
+    local seed_apk="$DIST_DIR/seed-$profile.apk"
+    if [ ! -f "$seed_apk" ]; then
+        echo -e "${RED}[ERROR] No se generó dist/seed-$profile.apk.${NC}"
+        exit 1
+    fi
+
+    local temp_build_dir="$DIST_DIR/build_temp"
+    rm -rf "$temp_build_dir" 2>/dev/null || true
+    mkdir -p "$temp_build_dir"
+
+    echo -e "${CYAN}[*] Inyectando hooks sin root con LSPatch...${NC}"
+    echo -e "${OBSIDIAN}    - Firma persistente (instant.keystore)${NC}"
+    echo -e "${OBSIDIAN}    - Signature Bypass Level 2 (anti-ban)${NC}"
+    echo -e "${OBSIDIAN}    - Módulos embebidos: seeder ($profile) + InstaEclipse${NC}"
+
+    java -jar "$LSPATCH_JAR" "$input_apk" \
+        -m "$seed_apk" \
+        -m "$MODULE_APK" \
+        -l 2 \
+        --injectdex \
+        -k "$KEYSTORE" "$KEY_PASS" "$KEY_ALIAS" "$KEY_PASS" \
+        -f \
+        -o "$temp_build_dir"
+
+    local patched_apk
+    patched_apk=$(find "$temp_build_dir" -maxdepth 1 -name "*.apk" | head -n 1)
+    if [ -z "$patched_apk" ] || [ ! -f "$patched_apk" ]; then
+        echo -e "${RED}[ERROR] LSPatch no produjo ningún APK.${NC}"
+        exit 1
+    fi
+
+    local final_apk="$DIST_DIR/Instant-${profile^^}.apk"
+    mv "$patched_apk" "$final_apk"
+    rm -rf "$temp_build_dir"
+
+    cp -f "$CONFIG_DIR/palette-dark.json" "$DIST_DIR/palette-dark.json"
+    cp -f "$CONFIG_DIR/palette-light.json" "$DIST_DIR/palette-light.json"
+
+    echo -e "\n${GREEN}${BOLD}[✓] ¡Compilación exitosa!${NC}"
+    echo -e "${MINT}APK final:${NC} ${BOLD}$final_apk${NC} ($(du -h "$final_apk" | cut -f1))"
+    echo ""
+    echo -e "${CYAN}El tema Mint Glass queda APPLY-ON-LAUNCH (sin toques):${NC}"
+    echo -e "  • La primera vez que abras Instan't se sembrará la configuración del perfil"
+    echo -e "    ${BOLD}$profile${NC}${CYAN} y la paleta oscura (temaPresetId=0 + JSON de paleta).${NC}"
+    echo -e "  • Modo oscuro:  paleta Mint Glass personalizada (vidrio, acento menta).${NC}"
+    echo -e "  • Modo claro:   preset integrado ${BOLD}Mint Fresh Light${NC} (id 113).${NC}"
+    echo -e "  • Truco de control: menú Instan't = mantener presionada la Lupa de Explore.${NC}"
+    echo ""
+    echo -e "${TEAL}Artefactos en dist/:${NC}"
+    ls -1 "$DIST_DIR" | sed 's/^/  • /'
+    echo ""
+    echo -e "${CYAN}Instalación (cuando haya dispositivo):${NC}"
+    echo -e "  ./instant install $profile"
+    echo -e "  — o manual: adb install -r \"$final_apk\""
+    pause "Presiona ENTER para volver..."
+}
+
+install_instant() {
+    ensure_dirs
+    local profile=${1:-}
+    local target_apk=""
+    if [ -n "$profile" ] && [ -f "$DIST_DIR/Instant-${profile^^}.apk" ]; then
+        target_apk="$DIST_DIR/Instant-${profile^^}.apk"
+    else
+        target_apk=$(find "$DIST_DIR" -maxdepth 1 -name "Instant-*.apk" | head -n 1)
+    fi
+
+    if [ -z "$target_apk" ] || [ ! -f "$target_apk" ]; then
+        echo -e "${RED}[!] No hay APK compilado en $DIST_DIR. Ejecuta ./instant build s21|universal primero.${NC}"
+        exit 1
+    fi
+
+    echo -e "\n${MINT}${BOLD}═══ Instalando Instan't ═══${NC}"
+    echo -e "APK: ${BOLD}$(basename "$target_apk")${NC}"
+
+    if ! command -v adb &>/dev/null; then
+        echo -e "${YELLOW}adb no está en PATH. Instala con: adb install -r \"$target_apk\"${NC}"
+        exit 1
+    fi
+
+    local devices
+    devices=$(adb devices | grep -v "List" | grep "device$" | awk '{print $1}')
+    if [ -z "$devices" ]; then
+        echo -e "${YELLOW}No hay dispositivo USB con depuración activa. Cuando lo conectes:${NC}"
+        echo -e "  adb install -r \"$target_apk\""
+        exit 1
+    fi
+
+    echo -e "${CYAN}Instalando en: $devices${NC}"
+    adb install -r "$target_apk"
+    echo -e "${GREEN}[✓] Instan't instalado. Primer arranque: abre Instagram (la config se auto-siembra).${NC}"
+}
+
+show_theme() {
+    banner
+    echo -e "${MINT}${BOLD}═══ Sistema de Diseño: Dark Obsidian & Mint Glass ═══${NC}"
+    echo -e "${OBSIDIAN}15 slots → engine InstaEclipse (IgThemePalette)${NC}\n"
+    python3 - "$CONFIG_DIR" <<'PYEOF'
+import json, sys, os
+d = json.load(open(os.path.join(sys.argv[1], "palette-dark.json"), encoding="utf-8"))
+l = json.load(open(os.path.join(sys.argv[1], "palette-light.json"), encoding="utf-8"))
+print("Oscura (paleta personalizada, seed automático):")
+for k, h in d["hexReference"].items():
+    print(f"  • {k.ljust(14)}: {h}")
+print(f"\nClara: preset integrado '{l.get('lightPresetName')}' (id {l['lightPresetId']}) — la paleta custom no es aplicable en modo claro (#251).")
+PYEOF
+    echo ""
+    echo -e "${TEAL}Paletas canónicas: config/palette-dark.json (seed) y config/palette-light.json (referencia).${NC}"
+    pause "Presiona ENTER para volver..."
+}
+
+show_antiban_guide() {
+    banner
+    echo -e "${MINT}${BOLD}═══ Directivas de Seguridad & Anti-Baneo ═══${NC}\n"
+    echo -e "${GREEN}[✓] SEGURO (Bajo riesgo - Hooks puramente locales):${NC}"
+    echo -e "  • ${BOLD}Ghost Mode:${NC} Hide Seen, Hide Typing, Hide Story Views son interceptaciones pasivas en memoria."
+    echo -e "  • ${BOLD}Distraction Free:${NC} Ocultar Reels, Explore y sugerencias se hacen filtrando la UI localmente sin llamadas extra."
+    echo -e "  • ${BOLD}Media Downloader:${NC} Descarga directa del archivo entregado en caché/CDN (sin tocar endpoints de scraping)."
+    echo -e "  • ${BOLD}Bloqueo de Meta AI y Anuncios:${NC} Supresión de layouts visuales sin alterar tokens criptográficos."
+    echo -e "  • ${BOLD}Keystore persistente:${NC} Tu build conserva siempre la misma firma ('instant.keystore')."
+    echo ""
+    echo -e "${RED}[!] ACCIONES QUE SÍ CAUSAN BANEO (EVITAR ESTRICTAMENTE):${NC}"
+    echo -e "  • ❌ Realizar spam de follow/unfollow con scripts o bots automáticos."
+    echo -e "  • ❌ Exportar listas de miles de seguidores rápidamente (dispara rate-limits HTTP 429)."
+    echo -e "  • ❌ Dar likes masivos de forma automatizada."
+    echo -e "  • ❌ Cambiar constantemente la ubicación con GPS Spoofing a países lejanos en pocos minutos."
+    pause "Presiona ENTER para volver..."
+}
+
+menu() {
+    while true; do
+        banner
+        echo -e "${MINT}1.${NC} Compilar Instan't ${TEAL}(Perfil S21 FE Tuned)${NC}"
+        echo -e "${MINT}2.${NC} Compilar Instan't ${OBSIDIAN}(Perfil Universal)${NC}"
+        echo -e "${MINT}3.${NC} Instalar en teléfono conectado ${CYAN}(ADB Install)${NC}"
+        echo -e "${MINT}4.${NC} Ver paleta y configuración Mint Glass"
+        echo -e "${MINT}5.${NC} Ver directivas Anti-Baneo & Seguridad"
+        echo -e "${MINT}0.${NC} Salir"
+        echo ""
+        read -r -p "Selecciona una opción [0-5]: " choice || exit 0
+        case "$choice" in
+            1) build_instant "s21" ;;
+            2) build_instant "universal" ;;
+            3) install_instant ;;
+            4) show_theme ;;
+            5) show_antiban_guide ;;
+            0) exit 0 ;;
+            *) echo -e "${RED}Opción inválida.${NC}"; sleep 1 ;;
+        esac
+    done
+}
+
+# CLI dispatch (non-interactive exit codes: 0 ok, 1 failure)
+case "${1:-}" in
+    build)
+        build_instant "${2:-s21}"
+        ;;
+    install)
+        install_instant "${2:-}"
+        ;;
+    theme)
+        show_theme
+        ;;
+    antiban)
+        show_antiban_guide
+        ;;
+    menu)
+        menu
+        ;;
+    *)
+        if [ -t 0 ] || [ "${INTERACTIVE:-0}" = "1" ]; then
+            menu
+        else
+            echo "Uso: ./instant build s21|universal | install [profile] | theme | antiban | menu"
+            exit 2
+        fi
+        ;;
+esac

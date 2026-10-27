@@ -1,0 +1,13 @@
+dist/*.apk
+dist/*.json
+dist/build_temp/
+input/*.apk
+bin/*.apk
+bin/*.jar
+bin/*.keystore
+scripts/seed-module/classes/
+scripts/seed-module/stub-classes/
+scripts/seed-module/gen/
+scripts/seed-module/build/
+assets/branding/
+dist/build_manager/

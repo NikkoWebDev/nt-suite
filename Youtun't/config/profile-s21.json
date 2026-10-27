@@ -1,0 +1,7 @@
+{
+  "profile": "s21",
+  "label": "Galaxy S21 FE Tuned",
+  "output": "Youtunt-S21.apk",
+  "app_name": "Youtun´t S21",
+  "notes": "Same official-bundle patch set as universal; runs on the SM-G990x. The 120Hz/codec tuning is device hardware: YouTube picks VP9/AV1 and frame rate on its own."
+}

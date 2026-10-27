@@ -1,0 +1,18 @@
+{
+  "profile": "universal",
+  "deviceName": "Universal Android (API 24+)",
+  "refreshRate": 60,
+  "hardwareAcceleration": true,
+  "display": {
+    "oledObsidianBlack": true
+  },
+  "media": {
+    "maxImageResolution": "high",
+    "videoCacheMb": 256
+  },
+  "security": {
+    "antiBanLevel": "safe_local_hook",
+    "bypassSignature": "level2_openat_pm",
+    "keystoreAlias": "wasapnt"
+  }
+}

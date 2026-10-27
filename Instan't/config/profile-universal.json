@@ -1,0 +1,27 @@
+{
+  "profile": "Universal Clean & Stealth",
+  "antiBanPolicy": {
+    "safetyLevel": "Maximum",
+    "description": "Hooks pasivos y seguros compatibles con cualquier dispositivo Android 9+."
+  },
+  "flags": {
+    "isAdBlockEnabled": true,
+    "isAnalyticsBlocked": true,
+    "removeMetaAI": true,
+    "hideNotesTray": true,
+    "hideThreadsButton": true,
+    "isGhostSeen": true,
+    "isGhostTyping": true,
+    "isGhostStory": true,
+    "isGhostScreenshot": true,
+    "downloaderUseOriginal": true,
+    "highResolutionImages": true,
+    "maxUploadQuality": true,
+    "offerAudioDownload": true,
+    "offerMediaInfo": true,
+    "forceReelScrubber": true,
+    "profileFollowsYouLabel": true,
+    "showFollowerToast": true,
+    "followersHistory": true
+  }
+}

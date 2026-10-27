@@ -1,0 +1,24 @@
+{
+  "themeName": "Mint Glass Light (reference only)",
+  "author": "nikko.dev",
+  "mode": "light uses the built-in InstaEclipse preset listed as lightPresetId (custom palettes are not supported in light mode, InstaEclipse #251).",
+  "lightPresetId": 113,
+  "palette": {
+    "background": -2162957,
+    "surface": -34734344,
+    "primaryText": -16104399,
+    "secondaryText": -13337497,
+    "accent": -16739231,
+    "button": -16739231,
+    "icon": -16748213,
+    "glyph": -16748213,
+    "divider": -861543726,
+    "border": -861543726,
+    "statusBar": -2162957,
+    "navigation": -2162957,
+    "link": -13269861,
+    "error": -2082218,
+    "destructive": -2082218
+  },
+  "lightPresetName": "Mint Fresh Light"
+}

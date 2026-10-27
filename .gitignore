@@ -1,0 +1,47 @@
+# ==============================================================================
+# Global Gitignore for n't suite (Android De-bloated Suite)
+# Prevents committing copyrighted base APKs, heavy jars, builds, and sensitive keys
+# ==============================================================================
+
+# Binaries and APK packages
+*.apk
+*.apks
+*.xapk
+*.aab
+
+# Keystores & credentials
+*.keystore
+*.jks
+*.p12
+*.broken.bak
+
+# Compilation directories & build artifacts
+**/dist/
+**/input/
+**/build/
+**/.gradle/
+**/bin/*.jar
+**/bin/*.apk
+**/bin/*.rvp
+**/.cache/
+**/dist/build_manager/
+**/dist/build_temp/
+
+# Android Studio & SDK environment
+local.properties
+.idea/
+*.iml
+.cxx/
+captures/
+
+# Python & scripts cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+Youtun't/app-src/

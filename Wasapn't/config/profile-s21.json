@@ -1,0 +1,22 @@
+{
+  "profile": "s21",
+  "deviceName": "Samsung Galaxy S21 FE 5G",
+  "refreshRate": 120,
+  "hardwareAcceleration": true,
+  "keepChannels": true,
+  "display": {
+    "aspectRatio": "19.5:9",
+    "oledObsidianBlack": true,
+    "dimmingFix": true
+  },
+  "media": {
+    "maxImageResolution": "original",
+    "opusAudioDecoder": "hardware_accelerated",
+    "videoCacheMb": 512
+  },
+  "security": {
+    "antiBanLevel": "safe_local_hook",
+    "bypassSignature": "level2_openat_pm",
+    "keystoreAlias": "wasapnt"
+  }
+}

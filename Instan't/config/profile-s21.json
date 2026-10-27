@@ -1,0 +1,43 @@
+{
+  "profile": "Samsung Galaxy S21 FE Tuned",
+  "antiBanPolicy": {
+    "safetyLevel": "Maximum",
+    "description": "Hooks puramente locales y pasivos. Cero scripts automáticos de follow/unfollow ni scraping masivo. Conserva autenticación OAuth oficial y firma de keystore persistente."
+  },
+  "flags": {
+    "isAdBlockEnabled": true,
+    "isAnalyticsBlocked": true,
+    "removeMetaAI": true,
+    "hideNotesTray": true,
+    "hideThreadsButton": true,
+    "hideDmBlend": true,
+    "hideDmSuggestions": true,
+    "hidePlusUpsells": true,
+    "hideCommunityNotes": true,
+    "hideOnboardingPrompts": true,
+    "disableSwipeToCamera": true,
+    "isGhostSeen": true,
+    "isGhostTyping": true,
+    "isGhostStory": true,
+    "isGhostScreenshot": true,
+    "isGhostViewOnce": true,
+    "allowScreenshots": true,
+    "keepEphemeralMessages": true,
+    "keepEditHistory": true,
+    "downloaderUseOriginal": true,
+    "highResolutionImages": true,
+    "maxUploadQuality": true,
+    "offerAudioDownload": true,
+    "offerMediaInfo": true,
+    "offerPlaybackSpeed": true,
+    "forceReelScrubber": true,
+    "feedCornerRadius": 14,
+    "disableReelsExceptDM": true,
+    "lockUseFingerprint": true,
+    "profileFollowsYouLabel": true,
+    "showFollowerToast": true,
+    "followersHistory": true,
+    "profileAnalyzer": true,
+    "followListExport": true
+  }
+}

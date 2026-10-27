@@ -1,0 +1,13 @@
+# Tikton't gitignore
+bin/*.jar
+bin/*.apk
+bin/*.rvp
+input/*.apk
+dist/*.apk
+dist/*-temporary-files
+tiktont.keystore
+*.keystore.broken.bak
+*.log
+.cache/
+.DS_Store
+__pycache__/

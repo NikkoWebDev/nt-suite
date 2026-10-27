@@ -1,0 +1,10 @@
+{
+  "profile": "universal",
+  "label": "Universal",
+  "output": "Tiktont-UNIVERSAL.apk",
+  "app_name": "Tikton´t",
+  "target_package": "com.zhiliaoapp.musically",
+  "refresh_rate": 60,
+  "hardware_acceleration": true,
+  "notes": "Any arm64 device, standard launcher label."
+}
